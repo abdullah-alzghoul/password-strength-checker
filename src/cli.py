@@ -1,6 +1,8 @@
 """CLI entry point for the password strength checker."""
 
+import getpass
 import sys
+from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
@@ -10,10 +12,12 @@ from rich.table import Table
 
 from src.core.entropy import StrengthLevel
 from src.core.scorer import analyze_password
+from src.report_generator import export_report
 
 console = Console(width=100)
 
 STRENGTH_COLORS = {
+    StrengthLevel.COMPROMISED: "bright_magenta",
     StrengthLevel.VERY_WEAK: "bright_red",
     StrengthLevel.WEAK: "red",
     StrengthLevel.FAIR: "yellow",
@@ -22,6 +26,7 @@ STRENGTH_COLORS = {
 }
 
 STRENGTH_PERCENT = {
+    StrengthLevel.COMPROMISED: 0,
     StrengthLevel.VERY_WEAK: 15,
     StrengthLevel.WEAK: 35,
     StrengthLevel.FAIR: 55,
@@ -63,7 +68,8 @@ def main() -> None:
     console.print(Panel("[bold]Password Strength Checker + Analyzer[/bold]", border_style="cyan"))
 
     while True:
-        password = Prompt.ask("\nEnter a password to analyze", password=True)
+        console.print()  # spacing, since getpass doesn't go through Rich
+        password = getpass.getpass("Enter a password to analyze: ")
 
         if not password:
             console.print("[bold red]Error:[/bold red] password cannot be empty.")
@@ -71,6 +77,12 @@ def main() -> None:
 
         report = analyze_password(password)
         render_report(report)
+
+        save = Prompt.ask("Save report (JSON + HTML)?", choices=["y", "n"], default="n")
+        if save == "y":
+            filename = Prompt.ask("Base filename (no extension)", default="report")
+            json_path, html_path = export_report(report, Path("reports") / filename)
+            console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
 
         again = Prompt.ask("\nCheck another password?", choices=["y", "n"], default="n")
         if again == "n":

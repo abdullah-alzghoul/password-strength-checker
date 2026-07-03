@@ -6,6 +6,7 @@ from enum import Enum
 
 
 class StrengthLevel(Enum):
+    COMPROMISED = "Compromised"
     VERY_WEAK = "Very Weak"
     WEAK = "Weak"
     FAIR = "Fair"
