@@ -22,7 +22,6 @@ class BreachResult:
 def sha1_hash(password: str) -> str:
     return hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
 
-
 def check_breach(password: str) -> BreachResult:
     """Query HIBP via k-anonymity: send only the first 5 hex chars of the SHA-1 hash."""
     full_hash = sha1_hash(password)
