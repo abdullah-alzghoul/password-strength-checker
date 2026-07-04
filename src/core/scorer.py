@@ -25,6 +25,8 @@ def build_warnings(pattern: PatternResult, breach: BreachResult) -> list[str]:
         warnings.append(f"Found in {breach.breach_count:,} known data breaches — do not use this password")
     elif not breach.checked and breach.error != "skipped":
         warnings.append("Could not verify against breach database (connection issue)")
+    if pattern.has_personal_info:
+        warnings.append(f"Contains part of your username/email: {', '.join(pattern.personal_info_matches)}")
     if pattern.is_common_password:
         warnings.append(f"One of the most common passwords (matched: {pattern.matched_common_word})")
     if pattern.has_sequential:
@@ -40,11 +42,13 @@ def analyze_password(
     password: str,
     wordlist: set[str] | None = None,
     check_breaches: bool = True,
+    username: str | None = None,
+    email: str | None = None,
 ) -> StrengthReport:
     """Full analysis: raw entropy reduced by any detected weak patterns.
     A confirmed breach match overrides the score entirely."""
     entropy_result = analyze_entropy(password)
-    pattern_result = analyze_patterns(password, wordlist=wordlist)
+    pattern_result = analyze_patterns(password, wordlist=wordlist, username=username, email=email)
 
     if check_breaches:
         breach_result = check_breach(password)

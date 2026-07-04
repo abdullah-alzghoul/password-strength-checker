@@ -31,6 +31,8 @@ class PatternResult:
     keyboard_matches: list[str] = field(default_factory=list)
     has_repeated_chars: bool = False
     repeated_matches: list[str] = field(default_factory=list)
+    has_personal_info: bool = False
+    personal_info_matches: list[str] = field(default_factory=list)
     penalty_bits: float = 0.0
 
 
@@ -106,7 +108,33 @@ def detect_repeated_chars(password: str, min_run: int = 3) -> list[str]:
     return list(dict.fromkeys(m.group(0) for m in pattern.finditer(password)))
 
 
-def analyze_patterns(password: str, wordlist: set[str] | None = None) -> PatternResult:
+def extract_context_tokens(username: str | None = None, email: str | None = None) -> list[str]:
+    """Extract meaningful substrings from a username/email to check against the password."""
+    tokens: set[str] = set()
+    if username:
+        cleaned = username.strip().lower()
+        if len(cleaned) >= 3:
+            tokens.add(cleaned)
+    if email:
+        local_part = email.strip().lower().split("@")[0]
+        for piece in re.split(r"[._\-+]", local_part):
+            if len(piece) >= 3:
+                tokens.add(piece)
+    return list(tokens)
+
+
+def detect_personal_info(password: str, context_tokens: list[str]) -> list[str]:
+    """Check whether the password contains any username/email-derived token."""
+    lower = password.lower()
+    return [token for token in context_tokens if token in lower]
+
+
+def analyze_patterns(
+    password: str,
+    wordlist: set[str] | None = None,
+    username: str | None = None,
+    email: str | None = None,
+) -> PatternResult:
     """Entry point. Raises on invalid input instead of failing silently."""
     if not password:
         raise ValueError("password cannot be empty")
@@ -118,6 +146,8 @@ def analyze_patterns(password: str, wordlist: set[str] | None = None) -> Pattern
     sequential = detect_sequential(password)
     keyboard = detect_keyboard_walk(password)
     repeated = detect_repeated_chars(password)
+    context_tokens = extract_context_tokens(username, email)
+    personal_info = detect_personal_info(password, context_tokens)
 
     penalty = 0.0
     if is_common:
@@ -125,6 +155,7 @@ def analyze_patterns(password: str, wordlist: set[str] | None = None) -> Pattern
     penalty += len(sequential) * 5.0
     penalty += len(keyboard) * 5.0
     penalty += len(repeated) * 3.0
+    penalty += len(personal_info) * 15.0
 
     return PatternResult(
         is_common_password=is_common,
@@ -135,5 +166,7 @@ def analyze_patterns(password: str, wordlist: set[str] | None = None) -> Pattern
         keyboard_matches=keyboard,
         has_repeated_chars=bool(repeated),
         repeated_matches=repeated,
+        has_personal_info=bool(personal_info),
+        personal_info_matches=personal_info,
         penalty_bits=penalty,
     )

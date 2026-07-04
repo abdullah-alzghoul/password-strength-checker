@@ -8,6 +8,8 @@ from src.core.pattern_detector import (
     detect_sequential,
     detect_keyboard_walk,
     detect_repeated_chars,
+    extract_context_tokens,
+    detect_personal_info,
     analyze_patterns,
 )
 
@@ -87,6 +89,33 @@ class TestDetectRepeatedChars:
         assert detect_repeated_chars("aabbcc") == []
 
 
+class TestExtractContextTokens:
+    def test_username_included_if_long_enough(self):
+        assert "abdullah" in extract_context_tokens(username="abdullah")
+
+    def test_short_username_excluded(self):
+        assert extract_context_tokens(username="ab") == []
+
+    def test_email_local_part_split_on_separators(self):
+        tokens = extract_context_tokens(email="abdullah.zghoul@example.com")
+        assert "abdullah" in tokens
+        assert "zghoul" in tokens
+
+    def test_no_input_returns_empty(self):
+        assert extract_context_tokens() == []
+
+
+class TestDetectPersonalInfo:
+    def test_match_found(self):
+        assert "abdullah" in detect_personal_info("abdullah2026", ["abdullah"])
+
+    def test_case_insensitive(self):
+        assert "abdullah" in detect_personal_info("ABDULLAH2026", ["abdullah"])
+
+    def test_no_match(self):
+        assert detect_personal_info("Xk9$mQ2vL7!p", ["abdullah"]) == []
+
+
 class TestAnalyzePatterns:
     def test_weak_password_flags_common(self):
         result = analyze_patterns("password", wordlist={"password"})
@@ -102,3 +131,13 @@ class TestAnalyzePatterns:
     def test_empty_raises(self):
         with pytest.raises(ValueError):
             analyze_patterns("")
+
+    def test_personal_info_detected_and_penalized(self):
+        result = analyze_patterns("abdullah2026!", wordlist=set(), username="abdullah")
+        assert result.has_personal_info is True
+        assert "abdullah" in result.personal_info_matches
+        assert result.penalty_bits >= 15.0
+
+    def test_no_personal_info_without_context(self):
+        result = analyze_patterns("abdullah2026!", wordlist=set())
+        assert result.has_personal_info is False

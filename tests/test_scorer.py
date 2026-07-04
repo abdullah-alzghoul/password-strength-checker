@@ -35,6 +35,13 @@ class TestAnalyzePassword:
         result = analyze_password("anything", check_breaches=False)
         assert result.breach_detail.checked is False
 
+    def test_username_match_flagged_via_pattern_detail(self):
+        result = analyze_password(
+            "abdullah2026!", wordlist=set(), check_breaches=False, username="abdullah"
+        )
+        assert result.pattern_detail.has_personal_info is True
+        assert any("username" in w.lower() for w in result.warnings)
+
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
         mock_check_breach.return_value = BreachResult(checked=True, is_breached=True, breach_count=50000)
@@ -74,3 +81,10 @@ class TestBuildWarnings:
         warnings = build_warnings(pattern, breach)
         assert len(warnings) == 1
         assert "100" in warnings[0]
+
+    def test_personal_info_warning_included(self):
+        pattern = PatternResult(has_personal_info=True, personal_info_matches=["abdullah"])
+        breach = BreachResult(checked=True, is_breached=False)
+        warnings = build_warnings(pattern, breach)
+        assert len(warnings) == 1
+        assert "abdullah" in warnings[0]
