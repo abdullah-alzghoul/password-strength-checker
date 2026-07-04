@@ -56,6 +56,11 @@ def render_report(report) -> None:
         task = progress.add_task("Strength", total=100)
         progress.update(task, completed=percent)
 
+    crack_table = Table(title="Estimated Time to Crack", show_header=False, box=None, padding=(0, 1))
+    for estimate in report.crack_time_estimates:
+        crack_table.add_row(estimate.scenario, estimate.human_readable)
+    console.print(crack_table)
+
     if report.warnings:
         console.print("\n[bold yellow]Warnings:[/bold yellow]")
         for w in report.warnings:

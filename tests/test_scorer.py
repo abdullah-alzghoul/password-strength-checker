@@ -42,6 +42,11 @@ class TestAnalyzePassword:
         assert result.pattern_detail.has_personal_info is True
         assert any("username" in w.lower() for w in result.warnings)
 
+    def test_crack_time_estimates_populated(self):
+        result = analyze_password("Xk9$mQ2vL7!p", wordlist=set(), check_breaches=False)
+        assert len(result.crack_time_estimates) == 3
+        assert all(e.seconds_to_crack >= 0 for e in result.crack_time_estimates)
+
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
         mock_check_breach.return_value = BreachResult(checked=True, is_breached=True, breach_count=50000)

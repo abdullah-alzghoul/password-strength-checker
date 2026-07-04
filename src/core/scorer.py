@@ -1,10 +1,11 @@
 """Combines entropy and pattern analysis into a single effective strength score."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.core.entropy import analyze_entropy, classify_strength, StrengthLevel, EntropyResult
 from src.core.pattern_detector import analyze_patterns, PatternResult
 from src.core.breach_checker import check_breach, BreachResult
+from src.core.crack_time import estimate_crack_times, CrackTimeEstimate
 
 
 @dataclass
@@ -17,6 +18,7 @@ class StrengthReport:
     pattern_detail: PatternResult
     breach_detail: BreachResult
     warnings: list[str]
+    crack_time_estimates: list[CrackTimeEstimate] = field(default_factory=list)
 
 
 def build_warnings(pattern: PatternResult, breach: BreachResult) -> list[str]:
@@ -56,6 +58,7 @@ def analyze_password(
         breach_result = BreachResult(checked=False, error="skipped")
 
     effective_bits = max(0.0, entropy_result.entropy_bits - pattern_result.penalty_bits)
+    crack_times = estimate_crack_times(effective_bits)
 
     if breach_result.checked and breach_result.is_breached:
         strength = StrengthLevel.COMPROMISED
@@ -70,5 +73,6 @@ def analyze_password(
         entropy_detail=entropy_result,
         pattern_detail=pattern_result,
         breach_detail=breach_result,
+        crack_time_estimates=crack_times,
         warnings=build_warnings(pattern_result, breach_result),
     )
