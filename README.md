@@ -1,5 +1,7 @@
 # Password Strength Checker + Analyzer
 
+![CI](https://github.com/abdullah-alzghoul/password-strength-checker/actions/workflows/ci.yml/badge.svg)
+
 A CLI security tool that scores password strength using entropy analysis, weak-pattern detection, and real-world breach checking via the Have I Been Pwned API — built as a cybersecurity portfolio project.
 
 ## Features
