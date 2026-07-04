@@ -23,19 +23,20 @@ def humanize_seconds(seconds: float) -> str:
     if seconds < 1:
         return "instantly"
     units = [
-        ("century", 60 * 60 * 24 * 365 * 100),
-        ("year", 60 * 60 * 24 * 365),
-        ("day", 60 * 60 * 24),
-        ("hour", 60 * 60),
-        ("minute", 60),
-        ("second", 1),
+        ("century", "centuries", 60 * 60 * 24 * 365 * 100),
+        ("year", "years", 60 * 60 * 24 * 365),
+        ("day", "days", 60 * 60 * 24),
+        ("hour", "hours", 60 * 60),
+        ("minute", "minutes", 60),
+        ("second", "seconds", 1),
     ]
-    for name, unit_seconds in units:
+    for singular, plural, unit_seconds in units:
         if seconds >= unit_seconds:
             value = seconds / unit_seconds
+            label = singular if value == 1 else plural
             if value > 1e6:
-                return f"{value:.1e} {name}s"
-            return f"{value:,.1f} {name}{'s' if value != 1 else ''}"
+                return f"{value:.1e} {label}"
+            return f"{value:,.1f} {label}"
     return "instantly"
 
 
