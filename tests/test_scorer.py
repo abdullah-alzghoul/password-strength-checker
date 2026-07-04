@@ -47,6 +47,10 @@ class TestAnalyzePassword:
         assert len(result.crack_time_estimates) == 3
         assert all(e.seconds_to_crack >= 0 for e in result.crack_time_estimates)
 
+    def test_compliance_checks_populated(self):
+        result = analyze_password("Str0ng!Passw0rd123", wordlist=set(), check_breaches=False)
+        assert len(result.compliance_checks) == 3
+
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
         mock_check_breach.return_value = BreachResult(checked=True, is_breached=True, breach_count=50000)

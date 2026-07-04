@@ -61,6 +61,12 @@ def render_report(report) -> None:
         crack_table.add_row(estimate.scenario, estimate.human_readable)
     console.print(crack_table)
 
+    compliance_table = Table(title="Compliance", show_header=False, box=None, padding=(0, 1))
+    for check in report.compliance_checks:
+        status = "[green]✓ Pass[/green]" if check.passed else "[red]✗ Fail[/red]"
+        compliance_table.add_row(check.name, status)
+    console.print(compliance_table)
+
     if report.warnings:
         console.print("\n[bold yellow]Warnings:[/bold yellow]")
         for w in report.warnings:
