@@ -5,6 +5,7 @@ from unittest.mock import patch
 from src.core.scorer import analyze_password, build_warnings
 from src.core.pattern_detector import PatternResult
 from src.core.breach_checker import BreachResult
+from src.core.mutation_simulator import MutationResult
 from src.core.entropy import StrengthLevel
 
 
@@ -51,6 +52,15 @@ class TestAnalyzePassword:
         result = analyze_password("Str0ng!Passw0rd123", wordlist=set(), check_breaches=False)
         assert len(result.compliance_checks) == 3
 
+    def test_mutation_detail_populated(self):
+        result = analyze_password("Xk9$mQ2vL7!p", wordlist=set(), check_breaches=False)
+        assert result.mutation_detail.vulnerable is False
+
+    def test_mutation_penalty_applied_for_variant_password(self):
+        result = analyze_password("password2026", wordlist={"password"}, check_breaches=False)
+        assert result.mutation_detail.vulnerable is True
+        assert result.effective_entropy_bits < result.raw_entropy_bits
+
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
         mock_check_breach.return_value = BreachResult(checked=True, is_breached=True, breach_count=50000)
@@ -71,7 +81,7 @@ class TestBuildWarnings:
     def test_common_password_warning(self):
         pattern = PatternResult(is_common_password=True, matched_common_word="password")
         breach = BreachResult(checked=True, is_breached=False)
-        warnings = build_warnings(pattern, breach)
+        warnings = build_warnings(pattern, breach, MutationResult())
         assert len(warnings) == 1
         assert "password" in warnings[0]
 
@@ -81,19 +91,34 @@ class TestBuildWarnings:
             has_repeated_chars=True, repeated_matches=["aaa"],
         )
         breach = BreachResult(checked=True, is_breached=False)
-        warnings = build_warnings(pattern, breach)
+        warnings = build_warnings(pattern, breach, MutationResult())
         assert len(warnings) == 2
 
     def test_breach_warning_takes_priority_position(self):
         pattern = PatternResult()
         breach = BreachResult(checked=True, is_breached=True, breach_count=100)
-        warnings = build_warnings(pattern, breach)
+        warnings = build_warnings(pattern, breach, MutationResult())
         assert len(warnings) == 1
         assert "100" in warnings[0]
 
     def test_personal_info_warning_included(self):
         pattern = PatternResult(has_personal_info=True, personal_info_matches=["abdullah"])
         breach = BreachResult(checked=True, is_breached=False)
-        warnings = build_warnings(pattern, breach)
+        warnings = build_warnings(pattern, breach, MutationResult())
         assert len(warnings) == 1
         assert "abdullah" in warnings[0]
+
+    def test_mutation_warning_included_when_not_exact_common_match(self):
+        pattern = PatternResult(is_common_password=False)
+        breach = BreachResult(checked=True, is_breached=False)
+        mutation = MutationResult(vulnerable=True, base_word="password")
+        warnings = build_warnings(pattern, breach, mutation)
+        assert len(warnings) == 1
+        assert "password" in warnings[0]
+
+    def test_mutation_warning_suppressed_when_already_exact_common_match(self):
+        pattern = PatternResult(is_common_password=True, matched_common_word="password")
+        breach = BreachResult(checked=True, is_breached=False)
+        mutation = MutationResult(vulnerable=True, base_word="password")
+        warnings = build_warnings(pattern, breach, mutation)
+        assert len(warnings) == 1

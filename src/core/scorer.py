@@ -7,6 +7,7 @@ from src.core.pattern_detector import analyze_patterns, PatternResult
 from src.core.breach_checker import check_breach, BreachResult
 from src.core.crack_time import estimate_crack_times, CrackTimeEstimate
 from src.core.compliance import check_all_standards, ComplianceCheck
+from src.core.mutation_simulator import simulate_mutation_attack, MutationResult
 
 
 @dataclass
@@ -21,9 +22,10 @@ class StrengthReport:
     warnings: list[str]
     crack_time_estimates: list[CrackTimeEstimate] = field(default_factory=list)
     compliance_checks: list[ComplianceCheck] = field(default_factory=list)
+    mutation_detail: MutationResult = field(default_factory=MutationResult)
 
 
-def build_warnings(pattern: PatternResult, breach: BreachResult) -> list[str]:
+def build_warnings(pattern: PatternResult, breach: BreachResult, mutation: MutationResult) -> list[str]:
     warnings = []
     if breach.checked and breach.is_breached:
         warnings.append(f"Found in {breach.breach_count:,} known data breaches — do not use this password")
@@ -33,6 +35,8 @@ def build_warnings(pattern: PatternResult, breach: BreachResult) -> list[str]:
         warnings.append(f"Contains part of your username/email: {', '.join(pattern.personal_info_matches)}")
     if pattern.is_common_password:
         warnings.append(f"One of the most common passwords (matched: {pattern.matched_common_word})")
+    elif mutation.vulnerable:
+        warnings.append(f"A simple variation of a common password (base word: {mutation.base_word})")
     if pattern.has_sequential:
         warnings.append(f"Contains a predictable sequence: {', '.join(pattern.sequential_matches)}")
     if pattern.has_keyboard_walk:
@@ -53,13 +57,15 @@ def analyze_password(
     A confirmed breach match overrides the score entirely."""
     entropy_result = analyze_entropy(password)
     pattern_result = analyze_patterns(password, wordlist=wordlist, username=username, email=email)
+    mutation_result = simulate_mutation_attack(password, wordlist=wordlist)
 
     if check_breaches:
         breach_result = check_breach(password)
     else:
         breach_result = BreachResult(checked=False, error="skipped")
 
-    effective_bits = max(0.0, entropy_result.entropy_bits - pattern_result.penalty_bits)
+    mutation_penalty = 35.0 if mutation_result.vulnerable and not pattern_result.is_common_password else 0.0
+    effective_bits = max(0.0, entropy_result.entropy_bits - pattern_result.penalty_bits - mutation_penalty)
     crack_times = estimate_crack_times(effective_bits)
     compliance_results = check_all_standards(password, pattern_result, breach_result.is_breached)
 
@@ -78,5 +84,6 @@ def analyze_password(
         breach_detail=breach_result,
         crack_time_estimates=crack_times,
         compliance_checks=compliance_results,
-        warnings=build_warnings(pattern_result, breach_result),
+        mutation_detail=mutation_result,
+        warnings=build_warnings(pattern_result, breach_result, mutation_result),
     )

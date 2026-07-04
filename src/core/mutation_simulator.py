@@ -43,7 +43,7 @@ def apply_mutations(word: str) -> set[str]:
 
 @dataclass
 class MutationResult:
-    vulnerable: bool
+    vulnerable: bool = False
     base_word: str | None = None
     approx_guesses: int | None = None
 
