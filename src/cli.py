@@ -67,15 +67,17 @@ def render_report(report) -> None:
 def main() -> None:
     console.print(Panel("[bold]Password Strength Checker + Analyzer[/bold]", border_style="cyan"))
 
+    username = Prompt.ask("Username (optional, for context-aware checks)", default="") or None
+    email = Prompt.ask("Email (optional, for context-aware checks)", default="") or None
+
     while True:
-        console.print()  # spacing, since getpass doesn't go through Rich
-        password = getpass.getpass("Enter a password to analyze: ")
+        password = Prompt.ask("\nEnter a password to analyze")
 
         if not password:
             console.print("[bold red]Error:[/bold red] password cannot be empty.")
             continue
 
-        report = analyze_password(password)
+        report = analyze_password(password, username=username, email=email)
         render_report(report)
 
         save = Prompt.ask("Save report (JSON + HTML)?", choices=["y", "n"], default="n")
