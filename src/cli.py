@@ -1,6 +1,7 @@
 """CLI entry point for the password strength checker."""
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
@@ -33,6 +34,8 @@ STRENGTH_PERCENT = {
     StrengthLevel.STRONG: 80,
     StrengthLevel.VERY_STRONG: 100,
 }
+
+WEAK_TIERS = (StrengthLevel.COMPROMISED, StrengthLevel.VERY_WEAK, StrengthLevel.WEAK)
 
 
 def render_report(report) -> None:
@@ -82,6 +85,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Password to analyze non-interactively. WARNING: may be visible in shell history "
              "and process listings — prefer the interactive prompt for real passwords.",
     )
+    parser.add_argument(
+        "-f", "--file",
+        help="Path to a text file with one password per line, for batch analysis. "
+             "Plaintext passwords are never written back out — only aggregate metrics are.",
+    )
     parser.add_argument("-u", "--username", help="Username for context-aware checks")
     parser.add_argument("-e", "--email", help="Email for context-aware checks")
     parser.add_argument(
@@ -90,7 +98,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-o", "--output",
-        help="Base filename to save the report as JSON + HTML (e.g. 'report' saves reports/report.json/.html)",
+        help="Base filename to save the report (JSON+HTML for single check, CSV for batch)",
     )
     return parser
 
@@ -104,9 +112,68 @@ def run_one_check(password: str, username: str | None, email: str | None,
         console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
 
 
+def export_batch_csv(results: list, path: Path) -> Path:
+    """Export aggregate metrics only — the plaintext passwords are never written out."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["index", "length", "raw_entropy_bits", "effective_entropy_bits", "strength", "warning_count"])
+        for i, report in enumerate(results, start=1):
+            writer.writerow([
+                i, report.password_length, report.raw_entropy_bits,
+                report.effective_entropy_bits, report.strength.value, len(report.warnings),
+            ])
+    return path
+
+
+def run_batch_check(filepath: str, username: str | None, email: str | None,
+                     check_breaches: bool, output: str | None) -> None:
+    path = Path(filepath)
+    if not path.exists():
+        console.print(f"[bold red]Error:[/bold red] file not found: {filepath}")
+        return
+
+    passwords = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if not passwords:
+        console.print("[bold red]Error:[/bold red] file contains no passwords.")
+        return
+
+    with console.status(f"Analyzing {len(passwords)} passwords..."):
+        reports = [
+            analyze_password(pwd, username=username, email=email, check_breaches=check_breaches)
+            for pwd in passwords
+        ]
+
+    summary = Table(title=f"Batch Results ({len(passwords)} passwords)")
+    summary.add_column("#")
+    summary.add_column("Length")
+    summary.add_column("Strength")
+    summary.add_column("Warnings")
+
+    for i, report in enumerate(reports, start=1):
+        color = STRENGTH_COLORS[report.strength]
+        summary.add_row(
+            str(i), str(report.password_length),
+            f"[{color}]{report.strength.value}[/{color}]",
+            str(len(report.warnings)),
+        )
+    console.print(summary)
+
+    weak_count = sum(1 for r in reports if r.strength in WEAK_TIERS)
+    console.print(f"\n[bold]{weak_count}/{len(passwords)}[/bold] passwords are weak or compromised.")
+
+    if output:
+        csv_path = export_batch_csv(reports, Path("reports") / f"{output}.csv")
+        console.print(f"[green]Saved:[/green] {csv_path}")
+
+
 def main() -> None:
     args = build_arg_parser().parse_args()
     console.print(Panel("[bold]Password Strength Checker + Analyzer[/bold]", border_style="cyan"))
+
+    if args.file:
+        run_batch_check(args.file, args.username, args.email, not args.no_network, args.output)
+        return
 
     if args.password:
         run_one_check(args.password, args.username, args.email, not args.no_network, args.output)
