@@ -1,6 +1,6 @@
 """CLI entry point for the password strength checker."""
 
-import getpass
+import argparse
 import sys
 from pathlib import Path
 
@@ -75,8 +75,42 @@ def render_report(report) -> None:
         console.print("\n[bold green]No weak patterns detected.[/bold green]")
 
 
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Password Strength Checker + Analyzer")
+    parser.add_argument(
+        "-p", "--password",
+        help="Password to analyze non-interactively. WARNING: may be visible in shell history "
+             "and process listings — prefer the interactive prompt for real passwords.",
+    )
+    parser.add_argument("-u", "--username", help="Username for context-aware checks")
+    parser.add_argument("-e", "--email", help="Email for context-aware checks")
+    parser.add_argument(
+        "--no-network", action="store_true",
+        help="Skip the Have I Been Pwned breach check (no internet required)",
+    )
+    parser.add_argument(
+        "-o", "--output",
+        help="Base filename to save the report as JSON + HTML (e.g. 'report' saves reports/report.json/.html)",
+    )
+    return parser
+
+
+def run_one_check(password: str, username: str | None, email: str | None,
+                   check_breaches: bool, output: str | None) -> None:
+    report = analyze_password(password, username=username, email=email, check_breaches=check_breaches)
+    render_report(report)
+    if output:
+        json_path, html_path = export_report(report, Path("reports") / output)
+        console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
+
+
 def main() -> None:
+    args = build_arg_parser().parse_args()
     console.print(Panel("[bold]Password Strength Checker + Analyzer[/bold]", border_style="cyan"))
+
+    if args.password:
+        run_one_check(args.password, args.username, args.email, not args.no_network, args.output)
+        return
 
     username = Prompt.ask("Username (optional, for context-aware checks)", default="") or None
     email = Prompt.ask("Email (optional, for context-aware checks)", default="") or None
