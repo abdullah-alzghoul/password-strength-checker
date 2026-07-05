@@ -49,6 +49,13 @@ def render_report(report) -> None:
 
     console.print(Panel(table, title="Password Analysis", border_style=color))
 
+    breakdown_table = Table(title="Score Breakdown", show_header=False, box=None, padding=(0, 1))
+    for item in report.score_breakdown:
+        sign_color = "green" if item.points >= 0 else "red"
+        sign = "+" if item.points >= 0 else ""
+        breakdown_table.add_row(item.label, f"[{sign_color}]{sign}{item.points:g}[/{sign_color}]")
+    console.print(breakdown_table)
+
     percent = STRENGTH_PERCENT[report.strength]
     with Progress(
         TextColumn("[bold]{task.description}"),

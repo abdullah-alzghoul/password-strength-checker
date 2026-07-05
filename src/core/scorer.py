@@ -3,11 +3,27 @@
 from dataclasses import dataclass, field
 
 from src.core.entropy import analyze_entropy, classify_strength, StrengthLevel, EntropyResult
-from src.core.pattern_detector import analyze_patterns, PatternResult
+from src.core.pattern_detector import (
+    analyze_patterns,
+    PatternResult,
+    COMMON_PASSWORD_PENALTY,
+    SEQUENTIAL_PENALTY_PER_MATCH,
+    KEYBOARD_PENALTY_PER_MATCH,
+    REPEATED_PENALTY_PER_MATCH,
+    PERSONAL_INFO_PENALTY_PER_MATCH,
+)
 from src.core.breach_checker import check_breach, BreachResult
 from src.core.crack_time import estimate_crack_times, CrackTimeEstimate
 from src.core.compliance import check_all_standards, ComplianceCheck
 from src.core.mutation_simulator import simulate_mutation_attack, MutationResult
+
+MUTATION_PENALTY = 35.0
+
+
+@dataclass
+class ScoreBreakdownItem:
+    label: str
+    points: float
 
 
 @dataclass
@@ -23,6 +39,7 @@ class StrengthReport:
     crack_time_estimates: list[CrackTimeEstimate] = field(default_factory=list)
     compliance_checks: list[ComplianceCheck] = field(default_factory=list)
     mutation_detail: MutationResult = field(default_factory=MutationResult)
+    score_breakdown: list[ScoreBreakdownItem] = field(default_factory=list)
 
 
 def build_warnings(pattern: PatternResult, breach: BreachResult, mutation: MutationResult) -> list[str]:
@@ -46,6 +63,34 @@ def build_warnings(pattern: PatternResult, breach: BreachResult, mutation: Mutat
     return warnings
 
 
+def build_score_breakdown(
+    raw_entropy_bits: float,
+    pattern: PatternResult,
+    mutation: MutationResult,
+    mutation_penalty: float,
+) -> list[ScoreBreakdownItem]:
+    items = [ScoreBreakdownItem("Base entropy (length \u00d7 character-set size)", round(raw_entropy_bits, 2))]
+
+    if pattern.is_common_password:
+        items.append(ScoreBreakdownItem(f"Common password match ({pattern.matched_common_word})", -COMMON_PASSWORD_PENALTY))
+    elif mutation_penalty > 0:
+        items.append(ScoreBreakdownItem(f"Variation of a common word ({mutation.base_word})", -mutation_penalty))
+    if pattern.has_sequential:
+        n = len(pattern.sequential_matches)
+        items.append(ScoreBreakdownItem(f"Sequential pattern ({n}x)", -SEQUENTIAL_PENALTY_PER_MATCH * n))
+    if pattern.has_keyboard_walk:
+        n = len(pattern.keyboard_matches)
+        items.append(ScoreBreakdownItem(f"Keyboard pattern ({n}x)", -KEYBOARD_PENALTY_PER_MATCH * n))
+    if pattern.has_repeated_chars:
+        n = len(pattern.repeated_matches)
+        items.append(ScoreBreakdownItem(f"Repeated characters ({n}x)", -REPEATED_PENALTY_PER_MATCH * n))
+    if pattern.has_personal_info:
+        n = len(pattern.personal_info_matches)
+        items.append(ScoreBreakdownItem(f"Personal info match ({n}x)", -PERSONAL_INFO_PENALTY_PER_MATCH * n))
+
+    return items
+
+
 def analyze_password(
     password: str,
     wordlist: set[str] | None = None,
@@ -64,10 +109,11 @@ def analyze_password(
     else:
         breach_result = BreachResult(checked=False, error="skipped")
 
-    mutation_penalty = 35.0 if mutation_result.vulnerable and not pattern_result.is_common_password else 0.0
+    mutation_penalty = MUTATION_PENALTY if mutation_result.vulnerable and not pattern_result.is_common_password else 0.0
     effective_bits = max(0.0, entropy_result.entropy_bits - pattern_result.penalty_bits - mutation_penalty)
     crack_times = estimate_crack_times(effective_bits)
     compliance_results = check_all_standards(password, pattern_result, breach_result.is_breached)
+    breakdown = build_score_breakdown(entropy_result.entropy_bits, pattern_result, mutation_result, mutation_penalty)
 
     if breach_result.checked and breach_result.is_breached:
         strength = StrengthLevel.COMPROMISED
@@ -85,5 +131,6 @@ def analyze_password(
         crack_time_estimates=crack_times,
         compliance_checks=compliance_results,
         mutation_detail=mutation_result,
+        score_breakdown=breakdown,
         warnings=build_warnings(pattern_result, breach_result, mutation_result),
     )

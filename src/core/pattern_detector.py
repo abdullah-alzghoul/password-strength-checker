@@ -129,6 +129,13 @@ def detect_personal_info(password: str, context_tokens: list[str]) -> list[str]:
     return [token for token in context_tokens if token in lower]
 
 
+COMMON_PASSWORD_PENALTY = 40.0
+SEQUENTIAL_PENALTY_PER_MATCH = 5.0
+KEYBOARD_PENALTY_PER_MATCH = 5.0
+REPEATED_PENALTY_PER_MATCH = 3.0
+PERSONAL_INFO_PENALTY_PER_MATCH = 15.0
+
+
 def analyze_patterns(
     password: str,
     wordlist: set[str] | None = None,
@@ -151,11 +158,11 @@ def analyze_patterns(
 
     penalty = 0.0
     if is_common:
-        penalty += 40.0
-    penalty += len(sequential) * 5.0
-    penalty += len(keyboard) * 5.0
-    penalty += len(repeated) * 3.0
-    penalty += len(personal_info) * 15.0
+        penalty += COMMON_PASSWORD_PENALTY
+    penalty += len(sequential) * SEQUENTIAL_PENALTY_PER_MATCH
+    penalty += len(keyboard) * KEYBOARD_PENALTY_PER_MATCH
+    penalty += len(repeated) * REPEATED_PENALTY_PER_MATCH
+    penalty += len(personal_info) * PERSONAL_INFO_PENALTY_PER_MATCH
 
     return PatternResult(
         is_common_password=is_common,

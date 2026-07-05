@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from src.core.scorer import analyze_password, build_warnings
+from src.core.scorer import analyze_password, build_warnings, build_score_breakdown
 from src.core.pattern_detector import PatternResult
 from src.core.breach_checker import BreachResult
 from src.core.mutation_simulator import MutationResult
@@ -60,6 +60,11 @@ class TestAnalyzePassword:
         result = analyze_password("password2026", wordlist={"password"}, check_breaches=False)
         assert result.mutation_detail.vulnerable is True
         assert result.effective_entropy_bits < result.raw_entropy_bits
+
+    def test_score_breakdown_populated(self):
+        result = analyze_password("password", wordlist={"password"}, check_breaches=False)
+        assert len(result.score_breakdown) >= 1
+        assert result.score_breakdown[0].label.startswith("Base entropy")
 
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
@@ -122,3 +127,31 @@ class TestBuildWarnings:
         mutation = MutationResult(vulnerable=True, base_word="password")
         warnings = build_warnings(pattern, breach, mutation)
         assert len(warnings) == 1
+
+
+class TestBuildScoreBreakdown:
+    def test_clean_password_only_has_base_entropy(self):
+        breakdown = build_score_breakdown(50.0, PatternResult(), MutationResult(), 0.0)
+        assert len(breakdown) == 1
+        assert breakdown[0].points == 50.0
+
+    def test_common_password_shows_negative_penalty(self):
+        pattern = PatternResult(is_common_password=True, matched_common_word="password")
+        breakdown = build_score_breakdown(37.6, pattern, MutationResult(), 0.0)
+        assert len(breakdown) == 2
+        assert breakdown[1].points == -40.0
+
+    def test_mutation_penalty_shown_when_not_exact_match(self):
+        pattern = PatternResult(is_common_password=False)
+        mutation = MutationResult(vulnerable=True, base_word="password")
+        breakdown = build_score_breakdown(50.0, pattern, mutation, 35.0)
+        assert len(breakdown) == 2
+        assert breakdown[1].points == -35.0
+
+    def test_multiple_pattern_penalties_all_listed(self):
+        pattern = PatternResult(
+            has_sequential=True, sequential_matches=["123"],
+            has_keyboard_walk=True, keyboard_matches=["qwerty", "123"],
+        )
+        breakdown = build_score_breakdown(60.0, pattern, MutationResult(), 0.0)
+        assert len(breakdown) == 3
