@@ -1,6 +1,6 @@
 """Tests for CLI argument parsing and non-interactive execution."""
 
-from src.cli import build_arg_parser, run_one_check, run_batch_check, export_batch_csv
+from src.cli import build_arg_parser, run_one_check, run_batch_check, export_batch_csv, run_generate
 from src.core.scorer import analyze_password
 
 
@@ -42,6 +42,21 @@ class TestBuildArgParser:
         args = parser.parse_args(["-f", "passwords.txt"])
         assert args.file == "passwords.txt"
 
+    def test_generate_flag_parsed(self):
+        parser = build_arg_parser()
+        args = parser.parse_args(["--generate"])
+        assert args.generate is True
+
+    def test_words_flag_default(self):
+        parser = build_arg_parser()
+        args = parser.parse_args([])
+        assert args.words == 6
+
+    def test_words_flag_custom(self):
+        parser = build_arg_parser()
+        args = parser.parse_args(["-g", "-w", "8"])
+        assert args.words == 8
+
 
 class TestRunOneCheck:
     def test_does_not_raise_without_output(self):
@@ -55,6 +70,17 @@ class TestRunOneCheck:
         run_one_check("Xk9$mQ2vL7!p", username=None, email=None, check_breaches=False, output="testreport")
         assert (tmp_path / "reports" / "testreport.json").exists()
         assert (tmp_path / "reports" / "testreport.html").exists()
+
+
+class TestRunGenerate:
+    def test_does_not_raise(self):
+        run_generate(6, None)
+
+    def test_saves_report_when_output_given(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        run_generate(6, "genreport")
+        assert (tmp_path / "reports" / "genreport.json").exists()
+        assert (tmp_path / "reports" / "genreport.html").exists()
 
 
 class TestExportBatchCsv:

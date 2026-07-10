@@ -13,6 +13,7 @@ from rich.table import Table
 
 from src.core.entropy import StrengthLevel
 from src.core.scorer import analyze_password
+from src.core.passphrase_generator import generate_passphrase
 from src.report_generator import export_report
 
 console = Console(width=100)
@@ -105,7 +106,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-o", "--output",
-        help="Base filename to save the report (JSON+HTML for single check, CSV for batch)",
+        help="Base filename to save the report (JSON+HTML for single/generate, CSV for batch)",
+    )
+    parser.add_argument(
+        "-g", "--generate", action="store_true",
+        help="Generate a secure passphrase instead of checking one",
+    )
+    parser.add_argument(
+        "-w", "--words", type=int, default=6,
+        help="Number of words in the generated passphrase (default: 6, used with --generate)",
     )
     return parser
 
@@ -114,6 +123,25 @@ def run_one_check(password: str, username: str | None, email: str | None,
                    check_breaches: bool, output: str | None) -> None:
     report = analyze_password(password, username=username, email=email, check_breaches=check_breaches)
     render_report(report)
+    if output:
+        json_path, html_path = export_report(report, Path("reports") / output)
+        console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
+
+
+def run_generate(word_count: int, output: str | None) -> None:
+    result = generate_passphrase(word_count=word_count)
+    console.print(Panel(f"[bold cyan]{result.passphrase}[/bold cyan]", title="Generated Passphrase"))
+    console.print(f"Entropy: {result.entropy_bits} bits (from a {result.wordlist_size}-word list)")
+
+    if result.wordlist_size < 1000:
+        console.print(
+            "[yellow]Note:[/yellow] using the built-in demo wordlist. For real-world use, "
+            "download the EFF long wordlist (eff.org/dice) as data/passphrase_words.txt."
+        )
+
+    report = analyze_password(result.passphrase, check_breaches=False)
+    console.print(f"\nSelf-check: [bold]{report.strength.value}[/bold] ({report.effective_entropy_bits} bits effective)")
+
     if output:
         json_path, html_path = export_report(report, Path("reports") / output)
         console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
@@ -177,6 +205,10 @@ def run_batch_check(filepath: str, username: str | None, email: str | None,
 def main() -> None:
     args = build_arg_parser().parse_args()
     console.print(Panel("[bold]Password Strength Checker + Analyzer[/bold]", border_style="cyan"))
+
+    if args.generate:
+        run_generate(args.words, args.output)
+        return
 
     if args.file:
         run_batch_check(args.file, args.username, args.email, not args.no_network, args.output)
