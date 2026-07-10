@@ -1,6 +1,6 @@
 """Diceware-style passphrase generator using cryptographically secure randomness.
 
-Ships with a demo wordlist (160 words, ~7.3 bits/word) for out-of-the-box use.
+Ships with a demo wordlist (170 words, ~7.4 bits/word) for out-of-the-box use.
 For real-world entropy (~12.9 bits/word), download EFF's official long
 wordlist (7,776 words) from https://www.eff.org/dice and save it as
 data/passphrase_words.txt (one word per line), replacing the demo list.
