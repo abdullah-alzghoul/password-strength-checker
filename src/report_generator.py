@@ -1,10 +1,17 @@
-"""Export StrengthReport results to JSON and HTML formats."""
+"""Export StrengthReport results to JSON, HTML, and PDF formats."""
 
 import html
 import json
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from src.core.scorer import StrengthReport
 
@@ -15,6 +22,15 @@ STRENGTH_HTML_COLORS = {
     "Fair": "#eab308",
     "Strong": "#22c55e",
     "Very Strong": "#16a34a",
+}
+
+STRENGTH_PDF_COLORS = {
+    "Compromised": colors.HexColor("#c026d3"),
+    "Very Weak": colors.HexColor("#dc2626"),
+    "Weak": colors.HexColor("#ef4444"),
+    "Fair": colors.HexColor("#eab308"),
+    "Strong": colors.HexColor("#22c55e"),
+    "Very Strong": colors.HexColor("#16a34a"),
 }
 
 
@@ -97,9 +113,61 @@ def export_html(report: StrengthReport, path: str | Path) -> Path:
     return path
 
 
-def export_report(report: StrengthReport, base_path: str | Path) -> tuple[Path, Path]:
-    """Export both JSON and HTML using the same base filename (without extension)."""
+def export_pdf(report: StrengthReport, path: str | Path) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    color = STRENGTH_PDF_COLORS.get(report.strength.value, colors.grey)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TitleCustom", parent=styles["Title"], textColor=colors.HexColor("#0f172a")
+    )
+    badge_style = ParagraphStyle(
+        "Badge", parent=styles["Normal"], textColor=color, fontSize=14, spaceAfter=12
+    )
+
+    doc = SimpleDocTemplate(str(path), pagesize=letter)
+    elements = [
+        Paragraph("Password Strength Report", title_style),
+        Paragraph(f"Strength: {xml_escape(report.strength.value)}", badge_style),
+    ]
+
+    summary_data = [
+        ["Length", str(report.password_length)],
+        ["Raw entropy", f"{report.raw_entropy_bits} bits"],
+        ["Effective entropy", f"{report.effective_entropy_bits} bits"],
+        ["Common password match", "Yes" if report.pattern_detail.is_common_password else "No"],
+    ]
+    summary_table = Table(summary_data, colWidths=[2.5 * inch, 3 * inch])
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f1f5f9")),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    elements.append(summary_table)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    elements.append(Paragraph("Warnings", styles["Heading2"]))
+    if report.warnings:
+        for w in report.warnings:
+            elements.append(Paragraph(f"\u2022 {xml_escape(w)}", styles["Normal"]))
+    else:
+        elements.append(Paragraph("No weak patterns detected.", styles["Normal"]))
+
+    doc.build(elements)
+    return path
+
+
+def export_report(report: StrengthReport, base_path: str | Path) -> tuple[Path, Path, Path]:
+    """Export JSON, HTML, and PDF using the same base filename (without extension)."""
     base = Path(base_path)
     json_path = export_json(report, base.with_suffix(".json"))
     html_path = export_html(report, base.with_suffix(".html"))
-    return json_path, html_path
+    pdf_path = export_pdf(report, base.with_suffix(".pdf"))
+    return json_path, html_path, pdf_path

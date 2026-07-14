@@ -112,7 +112,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-o",
         "--output",
-        help="Base filename to save the report (JSON+HTML for single/generate, CSV for batch)",
+        help="Base filename to save the report (JSON+HTML+PDF for single/generate, CSV for batch)",
     )
     parser.add_argument(
         "-g",
@@ -138,8 +138,8 @@ def run_one_check(
     )
     render_report(report)
     if output:
-        json_path, html_path = export_report(report, Path("reports") / output)
-        console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
+        json_path, html_path, pdf_path = export_report(report, Path("reports") / output)
+        console.print(f"[green]Saved:[/green] {json_path}, {html_path}, {pdf_path}")
 
 
 def run_generate(word_count: int, output: str | None) -> None:
@@ -162,8 +162,8 @@ def run_generate(word_count: int, output: str | None) -> None:
     )
 
     if output:
-        json_path, html_path = export_report(report, Path("reports") / output)
-        console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
+        json_path, html_path, pdf_path = export_report(report, Path("reports") / output)
+        console.print(f"[green]Saved:[/green] {json_path}, {html_path}, {pdf_path}")
 
 
 def export_batch_csv(results: list, path: Path) -> Path:
@@ -271,11 +271,11 @@ def main() -> None:
         report = analyze_password(password, username=username, email=email)
         render_report(report)
 
-        save = Prompt.ask("Save report (JSON + HTML)?", choices=["y", "n"], default="n")
+        save = Prompt.ask("Save report (JSON + HTML + PDF)?", choices=["y", "n"], default="n")
         if save == "y":
             filename = Prompt.ask("Base filename (no extension)", default="report")
-            json_path, html_path = export_report(report, Path("reports") / filename)
-            console.print(f"[green]Saved:[/green] {json_path}, {html_path}")
+            json_path, html_path, pdf_path = export_report(report, Path("reports") / filename)
+            console.print(f"[green]Saved:[/green] {json_path}, {html_path}, {pdf_path}")
 
         again = Prompt.ask("\nCheck another password?", choices=["y", "n"], default="n")
         if again == "n":

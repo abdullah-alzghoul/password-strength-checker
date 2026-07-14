@@ -6,7 +6,7 @@ from src.core.breach_checker import BreachResult
 from src.core.entropy import EntropyResult, StrengthLevel
 from src.core.pattern_detector import PatternResult
 from src.core.scorer import StrengthReport, analyze_password
-from src.report_generator import export_html, export_json, export_report, report_to_dict
+from src.report_generator import export_html, export_json, export_pdf, export_report, report_to_dict
 
 
 class TestReportToDict:
@@ -65,11 +65,25 @@ class TestExportHtml:
         assert "&lt;script&gt;" in content
 
 
-class TestExportReport:
-    def test_exports_both_formats(self, tmp_path):
+class TestExportPdf:
+    def test_creates_valid_pdf_file(self, tmp_path):
         report = analyze_password("Xk9$mQ2vL7!p", wordlist=set(), check_breaches=False)
-        json_path, html_path = export_report(report, tmp_path / "myreport")
+        out = export_pdf(report, tmp_path / "report.pdf")
+        assert out.exists()
+        content = out.read_bytes()
+        assert content.startswith(b"%PDF")
+
+    def test_pdf_has_reasonable_size(self, tmp_path):
+        report = analyze_password("password", wordlist={"password"}, check_breaches=False)
+        out = export_pdf(report, tmp_path / "report.pdf")
+        assert out.stat().st_size > 500
+
+
+class TestExportReport:
+    def test_exports_all_formats(self, tmp_path):
+        report = analyze_password("Xk9$mQ2vL7!p", wordlist=set(), check_breaches=False)
+        json_path, html_path, pdf_path = export_report(report, tmp_path / "myreport")
         assert json_path.exists()
         assert html_path.exists()
-        assert json_path.suffix == ".json"
-        assert html_path.suffix == ".html"
+        assert pdf_path.exists()
+        assert pdf_path.suffix == ".pdf"

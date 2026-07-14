@@ -12,7 +12,7 @@ A CLI security tool that scores password strength using entropy analysis, weak-p
 - **Breach checking** — queries the Have I Been Pwned API using the **k-anonymity model**: only the first 5 characters of the password's SHA-1 hash ever leave the machine. The full password, and the full hash, are never transmitted
 - **Compromised override** — a password found in a known breach is flagged `Compromised` regardless of its calculated entropy, in line with NIST SP 800-63B guidance. High entropy offers no protection once a password is in attacker wordlists
 - **Interactive CLI** — built with [Rich](https://github.com/Textualize/rich): color-coded strength meter, clear warnings, loop-based session
-- **JSON + HTML reports** — every analysis can be exported for record-keeping or sharing
+- **JSON, HTML, and PDF reports** — every analysis can be exported for record-keeping or sharing
 
 ## Sample output
 
