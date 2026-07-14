@@ -59,7 +59,11 @@ python -m src.cli
 
 Enter a password when prompted. Results include length, raw and effective entropy, strength tier, a color-coded meter, and any detected warnings. You'll be offered the option to save the result as JSON + HTML after each check.
 
-## Project structure
+## Docker
+
+```powershell
+docker build -t password-checker .
+docker run -it --rm password-checker
 
 ```text
 password-checker/
