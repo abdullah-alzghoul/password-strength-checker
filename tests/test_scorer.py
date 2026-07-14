@@ -2,11 +2,11 @@
 
 from unittest.mock import patch
 
-from src.core.scorer import analyze_password, build_warnings, build_score_breakdown
-from src.core.pattern_detector import PatternResult
 from src.core.breach_checker import BreachResult
-from src.core.mutation_simulator import MutationResult
 from src.core.entropy import StrengthLevel
+from src.core.mutation_simulator import MutationResult
+from src.core.pattern_detector import PatternResult
+from src.core.scorer import analyze_password, build_score_breakdown, build_warnings
 
 
 class TestAnalyzePassword:
@@ -68,7 +68,9 @@ class TestAnalyzePassword:
 
     @patch("src.core.scorer.check_breach")
     def test_breached_password_overrides_strength(self, mock_check_breach):
-        mock_check_breach.return_value = BreachResult(checked=True, is_breached=True, breach_count=50000)
+        mock_check_breach.return_value = BreachResult(
+            checked=True, is_breached=True, breach_count=50000
+        )
 
         result = analyze_password("Xk9$mQ2vL7!p", wordlist=set())
         assert result.strength == StrengthLevel.COMPROMISED
@@ -92,8 +94,10 @@ class TestBuildWarnings:
 
     def test_multiple_warnings(self):
         pattern = PatternResult(
-            has_sequential=True, sequential_matches=["123"],
-            has_repeated_chars=True, repeated_matches=["aaa"],
+            has_sequential=True,
+            sequential_matches=["123"],
+            has_repeated_chars=True,
+            repeated_matches=["aaa"],
         )
         breach = BreachResult(checked=True, is_breached=False)
         warnings = build_warnings(pattern, breach, MutationResult())
@@ -150,8 +154,10 @@ class TestBuildScoreBreakdown:
 
     def test_multiple_pattern_penalties_all_listed(self):
         pattern = PatternResult(
-            has_sequential=True, sequential_matches=["123"],
-            has_keyboard_walk=True, keyboard_matches=["qwerty", "123"],
+            has_sequential=True,
+            sequential_matches=["123"],
+            has_keyboard_walk=True,
+            keyboard_matches=["qwerty", "123"],
         )
         breakdown = build_score_breakdown(60.0, pattern, MutationResult(), 0.0)
         assert len(breakdown) == 3

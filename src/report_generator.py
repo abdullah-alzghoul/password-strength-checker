@@ -3,7 +3,7 @@
 import html
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src.core.scorer import StrengthReport
@@ -23,7 +23,7 @@ def report_to_dict(report: StrengthReport) -> dict:
     data = asdict(report)
     data["strength"] = report.strength.value
     data["entropy_detail"]["strength"] = report.entropy_detail.strength.value
-    data["generated_at"] = datetime.now(timezone.utc).isoformat()
+    data["generated_at"] = datetime.now(UTC).isoformat()
     return data
 
 
@@ -46,9 +46,15 @@ def _warnings_html(warnings: list[str]) -> str:
 
 def export_html(report: StrengthReport, path: str | Path) -> Path:
     color = STRENGTH_HTML_COLORS.get(report.strength.value, "#6b7280")
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     breach = report.breach_detail
-    breach_status = "Found in breach" if breach.is_breached else ("Not found" if breach.checked else "Not checked")
+    if breach.is_breached:
+        breach_status = "Found in breach"
+    elif breach.checked:
+        breach_status = "Not found"
+    else:
+        breach_status = "Not checked"
+    common_match_status = "Yes" if report.pattern_detail.is_common_password else "No"
 
     document = f"""<!DOCTYPE html>
 <html lang="en">
@@ -76,7 +82,7 @@ def export_html(report: StrengthReport, path: str | Path) -> Path:
     <tr><td>Length</td><td>{report.password_length}</td></tr>
     <tr><td>Raw entropy</td><td>{report.raw_entropy_bits} bits</td></tr>
     <tr><td>Effective entropy</td><td>{report.effective_entropy_bits} bits</td></tr>
-    <tr><td>Common password match</td><td>{"Yes" if report.pattern_detail.is_common_password else "No"}</td></tr>
+    <tr><td>Common password match</td><td>{common_match_status}</td></tr>
     <tr><td>Breach check</td><td>{breach_status}</td></tr>
   </table>
   <h2>Warnings</h2>

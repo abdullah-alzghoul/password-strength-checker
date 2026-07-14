@@ -14,9 +14,26 @@ from pathlib import Path
 DEFAULT_WORDLIST_PATH = Path(__file__).parent.parent.parent / "data" / "passphrase_words.txt"
 
 FALLBACK_WORDLIST = [
-    "apple", "river", "cloud", "stone", "forest", "eagle", "silver", "maple",
-    "garden", "bridge", "castle", "dragon", "meadow", "canyon", "harbor",
-    "island", "jungle", "lantern", "marble", "orchard",
+    "apple",
+    "river",
+    "cloud",
+    "stone",
+    "forest",
+    "eagle",
+    "silver",
+    "maple",
+    "garden",
+    "bridge",
+    "castle",
+    "dragon",
+    "meadow",
+    "canyon",
+    "harbor",
+    "island",
+    "jungle",
+    "lantern",
+    "marble",
+    "orchard",
 ]
 
 

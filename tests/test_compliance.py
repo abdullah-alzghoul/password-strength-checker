@@ -1,17 +1,19 @@
 """Unit tests for the compliance module."""
 
-from src.core.pattern_detector import PatternResult
 from src.core.compliance import (
-    check_nist_800_63b,
-    check_pci_dss_v4,
     check_active_directory_default,
     check_all_standards,
+    check_nist_800_63b,
+    check_pci_dss_v4,
 )
+from src.core.pattern_detector import PatternResult
 
 
 class TestCheckNist80063B:
     def test_passes_clean_long_password(self):
-        result = check_nist_800_63b("correcthorsebatterystaple", PatternResult(), breach_is_breached=False)
+        result = check_nist_800_63b(
+            "correcthorsebatterystaple", PatternResult(), breach_is_breached=False
+        )
         assert result.passed is True
 
     def test_fails_short_password(self):
@@ -66,6 +68,12 @@ class TestCheckActiveDirectoryDefault:
 
 class TestCheckAllStandards:
     def test_returns_three_checks(self):
-        results = check_all_standards("Str0ng!Passw0rd123", PatternResult(), breach_is_breached=False)
+        results = check_all_standards(
+            "Str0ng!Passw0rd123", PatternResult(), breach_is_breached=False
+        )
         assert len(results) == 3
-        assert {r.name for r in results} == {"NIST SP 800-63B", "PCI DSS v4.0", "Active Directory (default policy)"}
+        assert {r.name for r in results} == {
+            "NIST SP 800-63B",
+            "PCI DSS v4.0",
+            "Active Directory (default policy)",
+        }

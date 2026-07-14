@@ -1,8 +1,8 @@
 """Smoke tests for the CLI rendering (interactive prompts are not covered here)."""
 
 from src.cli import render_report
-from src.core.scorer import analyze_password
 from src.core.entropy import StrengthLevel
+from src.core.scorer import analyze_password
 
 
 def test_render_report_does_not_raise_for_strong_password():

@@ -22,7 +22,9 @@ def _char_categories(password: str) -> dict[str, bool]:
     }
 
 
-def check_nist_800_63b(password: str, pattern: PatternResult, breach_is_breached: bool) -> ComplianceCheck:
+def check_nist_800_63b(
+    password: str, pattern: PatternResult, breach_is_breached: bool
+) -> ComplianceCheck:
     reasons = []
     if len(password) < 8:
         reasons.append("Length below the 8-character minimum")
@@ -53,7 +55,9 @@ def check_active_directory_default(password: str, pattern: PatternResult) -> Com
         reasons.append("Does not use at least 3 of 4 character categories")
     if pattern.has_personal_info:
         reasons.append("Contains part of the username")
-    return ComplianceCheck(name="Active Directory (default policy)", passed=not reasons, failed_reasons=reasons)
+    return ComplianceCheck(
+        name="Active Directory (default policy)", passed=not reasons, failed_reasons=reasons
+    )
 
 
 def check_all_standards(

@@ -17,7 +17,7 @@ class TestHumanizeSeconds:
         assert "year" in humanize_seconds(60 * 60 * 24 * 365 * 5)
 
     def test_huge_values_use_scientific_notation(self):
-        result = humanize_seconds(10 ** 30)
+        result = humanize_seconds(10**30)
         assert "e" in result.lower()
 
 

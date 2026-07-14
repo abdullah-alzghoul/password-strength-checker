@@ -56,5 +56,7 @@ def simulate_mutation_attack(password: str, wordlist: set[str] | None = None) ->
     for base_word in wordlist:
         variants = apply_mutations(base_word)
         if password in variants:
-            return MutationResult(vulnerable=True, base_word=base_word, approx_guesses=len(variants))
+            return MutationResult(
+                vulnerable=True, base_word=base_word, approx_guesses=len(variants)
+            )
     return MutationResult(vulnerable=False)

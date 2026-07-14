@@ -52,7 +52,9 @@ class TestExportHtml:
             raw_entropy_bits=50.0,
             effective_entropy_bits=50.0,
             strength=StrengthLevel.FAIR,
-            entropy_detail=EntropyResult(entropy_bits=50.0, charset_size=26, length=10, strength=StrengthLevel.FAIR),
+            entropy_detail=EntropyResult(
+                entropy_bits=50.0, charset_size=26, length=10, strength=StrengthLevel.FAIR
+            ),
             pattern_detail=PatternResult(),
             breach_detail=BreachResult(checked=False, error="skipped"),
             warnings=["<script>alert(1)</script>"],

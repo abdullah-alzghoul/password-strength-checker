@@ -2,11 +2,11 @@
 no real request hits the HIBP API during testing."""
 
 import hashlib
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import requests
 
-from src.core.breach_checker import sha1_hash, check_breach
+from src.core.breach_checker import check_breach, sha1_hash
 
 
 def _hash_parts(password: str) -> tuple[str, str]:
@@ -17,7 +17,7 @@ def _hash_parts(password: str) -> tuple[str, str]:
 
 class TestSha1Hash:
     def test_matches_hashlib_reference(self):
-        expected = hashlib.sha1("password".encode("utf-8")).hexdigest().upper()
+        expected = hashlib.sha1(b"password").hexdigest().upper()
         assert sha1_hash("password") == expected
 
     def test_output_is_40_char_uppercase_hex(self):

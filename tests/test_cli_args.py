@@ -1,6 +1,6 @@
 """Tests for CLI argument parsing and non-interactive execution."""
 
-from src.cli import build_arg_parser, run_one_check, run_batch_check, export_batch_csv, run_generate
+from src.cli import build_arg_parser, export_batch_csv, run_batch_check, run_generate, run_one_check
 from src.core.scorer import analyze_password
 
 
@@ -63,11 +63,15 @@ class TestRunOneCheck:
         run_one_check("Xk9$mQ2vL7!p", username=None, email=None, check_breaches=False, output=None)
 
     def test_does_not_raise_with_context(self):
-        run_one_check("abdullah2026", username="abdullah", email=None, check_breaches=False, output=None)
+        run_one_check(
+            "abdullah2026", username="abdullah", email=None, check_breaches=False, output=None
+        )
 
     def test_saves_report_when_output_given(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        run_one_check("Xk9$mQ2vL7!p", username=None, email=None, check_breaches=False, output="testreport")
+        run_one_check(
+            "Xk9$mQ2vL7!p", username=None, email=None, check_breaches=False, output="testreport"
+        )
         assert (tmp_path / "reports" / "testreport.json").exists()
         assert (tmp_path / "reports" / "testreport.html").exists()
 
@@ -85,7 +89,9 @@ class TestRunGenerate:
 
 class TestExportBatchCsv:
     def test_csv_does_not_contain_plaintext_passwords(self, tmp_path):
-        reports = [analyze_password("SuperSecretPassword123!", wordlist=set(), check_breaches=False)]
+        reports = [
+            analyze_password("SuperSecretPassword123!", wordlist=set(), check_breaches=False)
+        ]
         csv_path = export_batch_csv(reports, tmp_path / "batch.csv")
         content = csv_path.read_text(encoding="utf-8")
         assert "SuperSecretPassword123!" not in content

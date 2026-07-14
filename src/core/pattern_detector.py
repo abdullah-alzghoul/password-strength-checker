@@ -5,10 +5,17 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 LEET_MAP = {
-    "0": "o", "1": "i", "3": "e", "4": "a", "5": "s",
-    "7": "t", "8": "b", "@": "a", "$": "s", "!": "i",
+    "0": "o",
+    "1": "i",
+    "3": "e",
+    "4": "a",
+    "5": "s",
+    "7": "t",
+    "8": "b",
+    "@": "a",
+    "$": "s",
+    "!": "i",
 }
 
 KEYBOARD_ROWS = [
@@ -48,7 +55,7 @@ def load_common_passwords(path: Path = DEFAULT_WORDLIST_PATH) -> set[str]:
     """Load a newline-separated wordlist. Returns empty set if file is missing."""
     if not path.exists():
         return set()
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return {line.strip().lower() for line in f if line.strip()}
 
 
@@ -76,7 +83,7 @@ def detect_sequential(password: str, min_run: int = 3) -> list[str]:
             while j + 1 < n and ord(lower[j + 1]) == ord(lower[j]) + step:
                 j += 1
             if j - i + 1 >= min_run:
-                matches.append(lower[i:j + 1])
+                matches.append(lower[i : j + 1])
             i = j if j > i else i + 1
 
     return list(dict.fromkeys(matches))
@@ -90,12 +97,12 @@ def detect_keyboard_walk(password: str, min_run: int = 3) -> list[str]:
         for variant in (row, row[::-1]):
             for length in range(len(variant), min_run - 1, -1):
                 for i in range(len(variant) - length + 1):
-                    chunk = variant[i:i + length]
+                    chunk = variant[i : i + length]
                     if chunk in lower:
                         raw_matches.append(chunk)
 
     raw_matches.sort(key=len, reverse=True)
-    final = []
+    final: list[str] = []
     for m in raw_matches:
         if not any(m in longer for longer in final):
             final.append(m)

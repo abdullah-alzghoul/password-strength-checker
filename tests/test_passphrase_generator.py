@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from src.core.passphrase_generator import generate_passphrase, load_wordlist, FALLBACK_WORDLIST
+from src.core.passphrase_generator import FALLBACK_WORDLIST, generate_passphrase, load_wordlist
 
 
 class TestGeneratePassphrase:
@@ -32,7 +32,9 @@ class TestGeneratePassphrase:
             generate_passphrase(word_count=0, wordlist=FALLBACK_WORDLIST)
 
     def test_append_random_digit_adds_digit(self):
-        result = generate_passphrase(word_count=3, wordlist=FALLBACK_WORDLIST, append_random_digit=True)
+        result = generate_passphrase(
+            word_count=3, wordlist=FALLBACK_WORDLIST, append_random_digit=True
+        )
         assert result.passphrase[-1].isdigit()
 
     def test_words_come_from_wordlist(self):

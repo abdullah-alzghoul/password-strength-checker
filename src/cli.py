@@ -7,13 +7,13 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn
+from rich.progress import BarColumn, Progress, TextColumn
 from rich.prompt import Prompt
 from rich.table import Table
 
 from src.core.entropy import StrengthLevel
-from src.core.scorer import analyze_password
 from src.core.passphrase_generator import generate_passphrase
+from src.core.scorer import analyze_password
 from src.report_generator import export_report
 
 console = Console(width=100)
@@ -67,7 +67,9 @@ def render_report(report) -> None:
         task = progress.add_task("Strength", total=100)
         progress.update(task, completed=percent)
 
-    crack_table = Table(title="Estimated Time to Crack", show_header=False, box=None, padding=(0, 1))
+    crack_table = Table(
+        title="Estimated Time to Crack", show_header=False, box=None, padding=(0, 1)
+    )
     for estimate in report.crack_time_estimates:
         crack_table.add_row(estimate.scenario, estimate.human_readable)
     console.print(crack_table)
@@ -89,39 +91,51 @@ def render_report(report) -> None:
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Password Strength Checker + Analyzer")
     parser.add_argument(
-        "-p", "--password",
+        "-p",
+        "--password",
         help="Password to analyze non-interactively. WARNING: may be visible in shell history "
-             "and process listings — prefer the interactive prompt for real passwords.",
+        "and process listings — prefer the interactive prompt for real passwords.",
     )
     parser.add_argument(
-        "-f", "--file",
+        "-f",
+        "--file",
         help="Path to a text file with one password per line, for batch analysis. "
-             "Plaintext passwords are never written back out — only aggregate metrics are.",
+        "Plaintext passwords are never written back out — only aggregate metrics are.",
     )
     parser.add_argument("-u", "--username", help="Username for context-aware checks")
     parser.add_argument("-e", "--email", help="Email for context-aware checks")
     parser.add_argument(
-        "--no-network", action="store_true",
+        "--no-network",
+        action="store_true",
         help="Skip the Have I Been Pwned breach check (no internet required)",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Base filename to save the report (JSON+HTML for single/generate, CSV for batch)",
     )
     parser.add_argument(
-        "-g", "--generate", action="store_true",
+        "-g",
+        "--generate",
+        action="store_true",
         help="Generate a secure passphrase instead of checking one",
     )
     parser.add_argument(
-        "-w", "--words", type=int, default=6,
+        "-w",
+        "--words",
+        type=int,
+        default=6,
         help="Number of words in the generated passphrase (default: 6, used with --generate)",
     )
     return parser
 
 
-def run_one_check(password: str, username: str | None, email: str | None,
-                   check_breaches: bool, output: str | None) -> None:
-    report = analyze_password(password, username=username, email=email, check_breaches=check_breaches)
+def run_one_check(
+    password: str, username: str | None, email: str | None, check_breaches: bool, output: str | None
+) -> None:
+    report = analyze_password(
+        password, username=username, email=email, check_breaches=check_breaches
+    )
     render_report(report)
     if output:
         json_path, html_path = export_report(report, Path("reports") / output)
@@ -130,7 +144,9 @@ def run_one_check(password: str, username: str | None, email: str | None,
 
 def run_generate(word_count: int, output: str | None) -> None:
     result = generate_passphrase(word_count=word_count)
-    console.print(Panel(f"[bold cyan]{result.passphrase}[/bold cyan]", title="Generated Passphrase"))
+    console.print(
+        Panel(f"[bold cyan]{result.passphrase}[/bold cyan]", title="Generated Passphrase")
+    )
     console.print(f"Entropy: {result.entropy_bits} bits (from a {result.wordlist_size}-word list)")
 
     if result.wordlist_size < 1000:
@@ -140,7 +156,10 @@ def run_generate(word_count: int, output: str | None) -> None:
         )
 
     report = analyze_password(result.passphrase, check_breaches=False)
-    console.print(f"\nSelf-check: [bold]{report.strength.value}[/bold] ({report.effective_entropy_bits} bits effective)")
+    console.print(
+        f"\nSelf-check: [bold]{report.strength.value}[/bold] "
+        f"({report.effective_entropy_bits} bits effective)"
+    )
 
     if output:
         json_path, html_path = export_report(report, Path("reports") / output)
@@ -152,23 +171,41 @@ def export_batch_csv(results: list, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["index", "length", "raw_entropy_bits", "effective_entropy_bits", "strength", "warning_count"])
+        writer.writerow(
+            [
+                "index",
+                "length",
+                "raw_entropy_bits",
+                "effective_entropy_bits",
+                "strength",
+                "warning_count",
+            ]
+        )
         for i, report in enumerate(results, start=1):
-            writer.writerow([
-                i, report.password_length, report.raw_entropy_bits,
-                report.effective_entropy_bits, report.strength.value, len(report.warnings),
-            ])
+            writer.writerow(
+                [
+                    i,
+                    report.password_length,
+                    report.raw_entropy_bits,
+                    report.effective_entropy_bits,
+                    report.strength.value,
+                    len(report.warnings),
+                ]
+            )
     return path
 
 
-def run_batch_check(filepath: str, username: str | None, email: str | None,
-                     check_breaches: bool, output: str | None) -> None:
+def run_batch_check(
+    filepath: str, username: str | None, email: str | None, check_breaches: bool, output: str | None
+) -> None:
     path = Path(filepath)
     if not path.exists():
         console.print(f"[bold red]Error:[/bold red] file not found: {filepath}")
         return
 
-    passwords = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    passwords = [
+        line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     if not passwords:
         console.print("[bold red]Error:[/bold red] file contains no passwords.")
         return
@@ -188,14 +225,17 @@ def run_batch_check(filepath: str, username: str | None, email: str | None,
     for i, report in enumerate(reports, start=1):
         color = STRENGTH_COLORS[report.strength]
         summary.add_row(
-            str(i), str(report.password_length),
+            str(i),
+            str(report.password_length),
             f"[{color}]{report.strength.value}[/{color}]",
             str(len(report.warnings)),
         )
     console.print(summary)
 
     weak_count = sum(1 for r in reports if r.strength in WEAK_TIERS)
-    console.print(f"\n[bold]{weak_count}/{len(passwords)}[/bold] passwords are weak or compromised.")
+    console.print(
+        f"\n[bold]{weak_count}/{len(passwords)}[/bold] passwords are weak or compromised."
+    )
 
     if output:
         csv_path = export_batch_csv(reports, Path("reports") / f"{output}.csv")

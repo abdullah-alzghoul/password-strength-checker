@@ -3,11 +3,11 @@
 import pytest
 
 from src.core.entropy import (
-    detect_charset_size,
+    StrengthLevel,
+    analyze_entropy,
     calculate_shannon_entropy,
     classify_strength,
-    analyze_entropy,
-    StrengthLevel,
+    detect_charset_size,
 )
 
 

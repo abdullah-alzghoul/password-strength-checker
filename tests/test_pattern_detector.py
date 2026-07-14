@@ -3,14 +3,14 @@
 import pytest
 
 from src.core.pattern_detector import (
-    normalize_leetspeak,
-    check_common_password,
-    detect_sequential,
-    detect_keyboard_walk,
-    detect_repeated_chars,
-    extract_context_tokens,
-    detect_personal_info,
     analyze_patterns,
+    check_common_password,
+    detect_keyboard_walk,
+    detect_personal_info,
+    detect_repeated_chars,
+    detect_sequential,
+    extract_context_tokens,
+    normalize_leetspeak,
 )
 
 
