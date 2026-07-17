@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Strength Checker</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --border: #334155;
+    --text: #e2e8f0; --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+    max-width: 640px; margin: 40px auto; padding: 0 20px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; margin-bottom: 20px;
+  }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin: 12px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%; padding: 10px; background: #0f172a;
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 0.95rem;
+  }
+  button {
+    background: #0ea5e9; color: white; border: none;
+    padding: 10px 20px; border-radius: 6px; font-size: 0.95rem;
+    cursor: pointer; margin-top: 16px;
+  }
+  button:hover { background: #0284c7; }
+  button:disabled { background: #475569; cursor: not-allowed; }
+  .badge {
+    display: inline-block; padding: 4px 14px; border-radius: 999px;
+    color: white; font-weight: 600; font-size: 0.9rem;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  td { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  td:first-child { color: var(--muted); width: 50%; }
+  ul.warnings { margin: 10px 0 0; padding-left: 20px; font-size: 0.9rem; }
+  ul.warnings li { margin-bottom: 4px; }
+  .clean { color: #22c55e; font-size: 0.9rem; }
+  .error { color: #ef4444; font-size: 0.9rem; }
+  .passphrase-box {
+    font-family: monospace; font-size: 1.1rem; background: #0f172a;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; margin-top: 12px; word-break: break-all;
+  }
+  #result, #passphraseResult { display: none; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; }
+</style>
+</head>
+<body>
+  <h1>Password Strength Checker + Analyzer</h1>
+  <p class="subtitle">Live demo backed by the FastAPI wrapper — start the API first (<code>fastapi dev src/api.py</code>).</p>
+
+  <div class="card">
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Enter a password to analyze">
+
+    <label for="username">Username (optional)</label>
+    <input type="text" id="username" placeholder="For context-aware checks">
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="checkBreaches" checked>
+      <label for="checkBreaches">Check against known data breaches</label>
+    </div>
+
+    <button id="analyzeBtn" onclick="analyze()">Analyze</button>
+    <div id="result"></div>
+  </div>
+
+  <div class="card">
+    <label for="wordCount">Passphrase word count</label>
+    <input type="number" id="wordCount" value="6" min="1" max="20">
+    <button id="generateBtn" onclick="generatePassphrase()">Generate Passphrase</button>
+    <div id="passphraseResult"></div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    const STRENGTH_COLORS = {
+      "Compromised": "#c026d3", "Very Weak": "#dc2626", "Weak": "#ef4444",
+      "Fair": "#eab308", "Strong": "#22c55e", "Very Strong": "#16a34a",
+    };
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function analyze() {
+      const password = document.getElementById("password").value;
+      const username = document.getElementById("username").value || null;
+      const checkBreaches = document.getElementById("checkBreaches").checked;
+      const btn = document.getElementById("analyzeBtn");
+      const resultDiv = document.getElementById("result");
+
+      if (!password) {
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = '<p class="error">Enter a password first.</p>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Analyzing...";
+
+      try {
+        const response = await fetch(`${API_BASE}/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password, username, check_breaches: checkBreaches }),
+        });
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+        renderResult(await response.json());
+      } catch (err) {
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `<p class="error">Could not reach the API at ${API_BASE}. (${err.message})</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Analyze";
+      }
+    }
+
+    function renderResult(data) {
+      const color = STRENGTH_COLORS[data.strength] || "#64748b";
+      const resultDiv = document.getElementById("result");
+
+      let warningsHtml = '<p class="clean">No weak patterns detected.</p>';
+      if (data.warnings && data.warnings.length > 0) {
+        warningsHtml = "<ul class=\"warnings\">" +
+          data.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join("") + "</ul>";
+      }
+
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = `
+        <span class="badge" style="background:${color}">${escapeHtml(data.strength)}</span>
+        <table>
+          <tr><td>Length</td><td>${data.password_length}</td></tr>
+          <tr><td>Raw entropy</td><td>${data.raw_entropy_bits} bits</td></tr>
+          <tr><td>Effective entropy</td><td>${data.effective_entropy_bits} bits</td></tr>
+        </table>
+        ${warningsHtml}
+      `;
+    }
+
+    async function generatePassphrase() {
+      const wordCount = parseInt(document.getElementById("wordCount").value, 10) || 6;
+      const btn = document.getElementById("generateBtn");
+      const resultDiv = document.getElementById("passphraseResult");
+
+      btn.disabled = true;
+      btn.textContent = "Generating...";
+
+      try {
+        const response = await fetch(`${API_BASE}/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ word_count: wordCount }),
+        });
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+        const data = await response.json();
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `
+          <div class="passphrase-box">${escapeHtml(data.passphrase)}</div>
+          <p style="color:#94a3b8; font-size:0.85rem; margin-top:8px;">
+            ${data.entropy_bits} bits of entropy (from a ${data.wordlist_size}-word list)
+          </p>
+        `;
+      } catch (err) {
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `<p class="error">Could not reach the API at ${API_BASE}. (${err.message})</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Generate Passphrase";
+      }
+    }
+  </script>
+</body>
+</html>
